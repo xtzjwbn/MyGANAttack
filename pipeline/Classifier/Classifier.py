@@ -67,7 +67,6 @@ class Classifier():
 			loss_test = 0
 
 			self._model.train()
-
 			for (i, (cur_r, cur_y)) in enumerate(self._train_dataLoader):
 				cur_r = cur_r.to(self._device)
 				cur_y = cur_y.to(self._device)
@@ -151,6 +150,11 @@ class Classifier():
 		target_model.load_state_dict(torch.load(filepath, map_location = self._device))
 		target_model.eval()
 
+	def Serialize(self,filepath):
+		import pickle
+		with open(filepath+f"/Classifier_{self._name}.pkl", "wb") as file :
+			pickle.dump(self, file)
+
 	def _dataloader_setting(self,
 	                        X : np.ndarray,
 	                        y : np.ndarray,
@@ -184,6 +188,9 @@ class Classifier():
 	@property
 	def size_test(self):
 		return self._size_test
+	@property
+	def model(self):
+		return self._model
 
 	def _apply_preprocessing(self, x, y):
 		x_, y_ = x,y

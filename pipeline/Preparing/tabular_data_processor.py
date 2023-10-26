@@ -15,6 +15,7 @@ class TableDataStruct:
 	y: np.ndarray
 	nb_classes: int
 	discrete_columns: List[str]
+	separate_num : int
 	R : np.ndarray
 	Rdis : np.ndarray
 	Rcon : np.ndarray
@@ -38,23 +39,23 @@ class TabularDataProcessor:
 	__data_transformer_setting -> set the DataTransformer
 	"""
 	def __init__(self,filepath,scale_type = "minmax"):
-		self.data_info = read_data_from_json(filepath)
+		self._data_info = read_data_from_json(filepath)
 
-		name = self.data_info["name"]
+		name = self._data_info["name"]
 		self.__name__ = name + "_Processor"
-		self.name = name
-		self.scale_type = scale_type
+		self._name = name
+		self._scale_type = scale_type
 
 		#############################################
 		# TODO: write to json better
 		#############################################
 		if name == "German" :
-			data = pd.read_csv(self.data_info["path"], header = None, delimiter = " ")
+			data = pd.read_csv(self._data_info["path"], header = None, delimiter = " ")
 		else :
-			data = pd.read_csv(self.data_info["path"], header = None, delimiter = ",")
+			data = pd.read_csv(self._data_info["path"], header = None, delimiter = ",")
 
-		X = data.iloc[:, self.data_info["X"]]
-		y = data.iloc[:, self.data_info["y"]].values
+		X = data.iloc[:, self._data_info["X"]]
+		y = data.iloc[:, self._data_info["y"]].values
 		if name == "German" :
 			y = y - 1
 		elif name == "toxicity" :
@@ -64,24 +65,25 @@ class TabularDataProcessor:
 			y = 1 - y
 
 
-		self.discrete_columns = self.data_info["discrete_columns"]
+		self._discrete_columns = self._data_info["discrete_columns"]
 
-		self.data_transformer = self.__data_transformer_setting(X)
+		self._data_transformer = self.__data_transformer_setting(X)
 
-		self.tabular_data = self.__data_processing(X,y)
+		self._tabular_data = self.__data_processing(X,y)
 
 
 	def __data_processing(self,x,y):
-		R = self.data_transformer.transform(x)
-		Rdis, Rcon = self.data_transformer.separate_continuous_discrete_columns(R)
-		Rtogether = self.data_transformer.take_discrete_continuous_together(Rdis, Rcon)
-		Rnew = self.data_transformer.separate_to_ordered_R(Rtogether)
+		R = self._data_transformer.transform(x)
+		Rdis, Rcon = self._data_transformer.separate_continuous_discrete_columns(R)
+		Rtogether = self._data_transformer.take_discrete_continuous_together(Rdis, Rcon)
+		Rnew = self._data_transformer.separate_to_ordered_R(Rtogether)
 
 
 		return TableDataStruct(X = x,
 		                       y = y,
 		                       nb_classes = np.max(y)+1,
-		                       discrete_columns = self.discrete_columns,
+		                       discrete_columns = self._discrete_columns,
+		                       separate_num = self._data_transformer.separate_num,
 		                       R = R,
 		                       Rdis = Rdis,
 		                       Rcon = Rcon,
@@ -89,6 +91,25 @@ class TabularDataProcessor:
 		                       Rnew = Rnew)
 
 	def __data_transformer_setting(self,X):
-		data_transformer = DataTransformer(self.discrete_columns, need_normalized = True, scale_type = self.scale_type)
+		data_transformer = DataTransformer(self._discrete_columns, need_normalized = True, scale_type = self._scale_type)
 		data_transformer.fit(X)
 		return data_transformer
+
+	@property
+	def name(self):
+		return self._name
+	@property
+	def data_info(self):
+		return self._data_info
+	@property
+	def scale_type(self):
+		return self._scale_type
+	@property
+	def discrete_columns(self):
+		return self._discrete_columns
+	@property
+	def data_transformer(self):
+		return self._data_transformer
+	@property
+	def tabular_data(self):
+		return self._tabular_data

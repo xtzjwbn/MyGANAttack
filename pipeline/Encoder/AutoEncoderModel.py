@@ -129,8 +129,13 @@ class AutoEncoderModel:
 
 	def save_model(self, filepath):
 		os.makedirs(filepath, exist_ok = True)
-		targeted_model_file_name = filepath+f'/{self._name}_target_model.pth'
+		targeted_model_file_name = filepath+f'/{self._name}.pth'
 		torch.save(self._model.state_dict(), targeted_model_file_name)
+
+	def Serialize(self,filepath):
+		import pickle
+		with open(filepath+f"/AutoEncoder_{self._name}.pkl", "wb") as file :
+			pickle.dump(self, file)
 
 	def _dataloader_setting(self,
 	                        X : np.ndarray,
@@ -143,3 +148,13 @@ class AutoEncoderModel:
 		test_set = TensorDataset(torch.from_numpy(X_test))
 		test_data_loader = DataLoader(test_set, batch_size = batch_size)
 		return train_data_loader, test_data_loader, X_train.shape[0], X_test.shape[0]
+
+	@property
+	def size_train(self):
+		return self._size_train
+	@property
+	def size_test(self):
+		return self._size_test
+	@property
+	def model(self):
+		return self._model
