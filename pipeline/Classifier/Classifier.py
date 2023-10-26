@@ -1,16 +1,16 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from models.models import netClassificationMLP
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 from torch.optim.lr_scheduler import StepLR
+
 from sklearn.model_selection import train_test_split
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import os
 
-class Classifier:
+class Classifier():
 	"""
 	TODO: Annotation
 	"""
@@ -20,13 +20,13 @@ class Classifier:
 	             optimizer,
 	             loss,
 	             schedule,
-	             device_type = torch.device("cpu")):
+	             device = torch.device("cpu")):
 		self._name = name
 		self._model = model
-		self._device = device_type
 		self._optimizer = optimizer
 		self._loss = loss
 		self._schedule = schedule
+		self._device = device
 
 		self._test_dataloader = None
 		self._train_dataLoader = None
@@ -42,9 +42,14 @@ class Classifier:
 	    weighted = -1,
 	    random_seed = 222,):
 
-		self._model.train()
+		if self._model is None :
+			raise ValueError("A model is needed to train the model, but none for provided.")
 		if self._optimizer is None :
 			raise ValueError("An optimizer is needed to train the model, but none for provided.")
+		if self._loss is None :
+			raise ValueError("A loss function is needed to train the model, but none for provided.")
+
+		self._model.train()
 
 		# x_preprocessed, y_preprocessed = self._apply_preprocessing(x, y)
 		self._train_dataLoader, self._test_dataloader, self._size_train, self._size_test = self._dataloader_setting(x, y, batch_size, weighted, random_seed)
@@ -79,7 +84,8 @@ class Classifier:
 				loss.backward()
 				self._optimizer.step()
 				accuracy_train += (pred.argmax(1) == cur_y).sum()
-			self._schedule.step()
+			if self._schedule is not None:
+				self._schedule.step()
 
 			self._model.eval()
 			for (i, (cur_r, cur_y)) in enumerate(self._test_dataloader):
@@ -101,10 +107,12 @@ class Classifier:
 					f"lossTest:{loss_test / self._size_test:.4f} accTest:{accuracy_test / self._size_test:.4f}")
 
 
-	def predict(self, x : np.ndarray, batch_size: int = 128, training_mode: bool = False) -> np.ndarray :
-		self._model.train(mode=training_mode)
+	def predict(self, x : np.ndarray,
+	            batch_size: int = 128) -> np.ndarray :
+		self._model.eval()
 
-		x_preprocessed,_ = self._apply_preprocessing(x,None)
+		# x_preprocessed,_ = self._apply_preprocessing(x,None)
+		x_preprocessed = x
 
 		results_list = []
 
@@ -116,7 +124,8 @@ class Classifier:
             )
 			with torch.no_grad():
 				model_outputs = self._model(torch.from_numpy(x_preprocessed[begin:end]).to(self._device))
-			output = model_outputs[-1]
+			# output = model_outputs[-1]
+			output = model_outputs
 			output = output.detach().cpu().numpy().astype(np.float32)
 			if len(output.shape) == 1:
 				output = np.expand_dims(output.detach().cpu().numpy(), axis=1).astype(np.float32)
@@ -130,8 +139,17 @@ class Classifier:
 
 	def save_model(self, filepath):
 		os.makedirs(filepath, exist_ok = True)
-		targeted_model_file_name = filepath+f'/{self._name}_target_model.pth'
+		targeted_model_file_name = filepath+f'/{self._name}.pth'
 		torch.save(self._model.state_dict(), targeted_model_file_name)
+
+	def load_model(self,filepath):
+		"""
+		TODO: Maybe not needed to exist.
+		"""
+		# targetModelPath = f'./models/{data_name}/{data_name}_myGAN_adv_train_model.pth'
+		target_model = self._model
+		target_model.load_state_dict(torch.load(filepath, map_location = self._device))
+		target_model.eval()
 
 	def _dataloader_setting(self,
 	                        X : np.ndarray,
