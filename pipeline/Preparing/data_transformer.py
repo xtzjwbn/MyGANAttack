@@ -4,6 +4,34 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 
 
 class DataTransformer :
+    """
+    Variables:
+    need_normalized -> bool, if data needs to be normalized
+    scale_type -> minmax, standard otherwise
+    R_dis_dimmension -> the number of discrete columns
+    separate_num -> the separate position of continuous and discrete columns
+
+
+    raw_data : [5,A3,7]
+    ordered_R : [0.5, [0,0,1,0], 0.7]
+    separate_data : [[0,0,1,0], 0.5, 0.7]
+    unprocessed_data : [[0.001,-0.9,1.02,0.2],0.47,0.73]
+
+
+    Methods:
+    _fit_discrete -> fit discrete columns with sklearn.OneHot
+    _fit_continuous -> fit continuous columns with sklearn.MinMaxScaler or sklearn.StandardScaler
+    fit -> fit given raw_data
+
+    transform -> raw_data transforms to ordered_R
+    inverse_transform -> ordered_R transforms to raw_data
+
+    separate_continuous_discrete_columns -> ordered_R to continuous data and discrete data
+    take_discrete_continuous_together -> unprocessed_data to separate_data
+    separate_to_ordered_R -> separate_data to ordered_R
+
+    // TODO: process the unprocessed_data should be pulled out to another method
+    """
     class ColumnTransformerInfo():
         def __init__(self, transformer, column_name, dim):
             self.transformer = transformer

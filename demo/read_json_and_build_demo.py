@@ -1,4 +1,4 @@
-from pipeline.tabular_data_processor import TabularDataProcessor
+from pipeline.Preparing.tabular_data_processor import TabularDataProcessor
 
 processor = TabularDataProcessor("../Data/German.json")
 

@@ -1,4 +1,4 @@
-from pipeline.data_transformer import DataTransformer
+from pipeline.Preparing.data_transformer import DataTransformer
 from Utils.data_preparing import read_data_from_json
 import pandas as pd
 import numpy as np
@@ -13,6 +13,7 @@ class TableDataStruct:
 	#############################################
 	X: np.ndarray
 	y: np.ndarray
+	nb_classes: int
 	discrete_columns: List[str]
 	R : np.ndarray
 	Rdis : np.ndarray
@@ -22,6 +23,20 @@ class TableDataStruct:
 
 
 class TabularDataProcessor:
+	"""
+	Transforming raw data to R data or inversing them.
+
+	Variables:
+	name -> name of dataset
+	scale_type -> minmax or standard, otherwise
+	discrete_columns -> record the discrete column of dataset
+	data_transformer -> the DataTransformer of dataset
+	tabular_data -> record tabular data
+
+	Methods:
+	__data_processing -> set self.tabular_data
+	__data_transformer_setting -> set the DataTransformer
+	"""
 	def __init__(self,filepath,scale_type = "minmax"):
 		self.data_info = read_data_from_json(filepath)
 
@@ -39,7 +54,7 @@ class TabularDataProcessor:
 			data = pd.read_csv(self.data_info["path"], header = None, delimiter = ",")
 
 		X = data.iloc[:, self.data_info["X"]]
-		y = data.iloc[:, self.data_info["y"]]
+		y = data.iloc[:, self.data_info["y"]].values
 		if name == "German" :
 			y = y - 1
 		elif name == "toxicity" :
@@ -64,13 +79,14 @@ class TabularDataProcessor:
 
 
 		return TableDataStruct(X = x,
-											y = y,
-											discrete_columns = self.discrete_columns,
-											R = R,
-											Rdis = Rdis,
-											Rcon = Rcon,
-											Rtogether = Rtogether,
-											Rnew = Rnew)
+		                       y = y,
+		                       nb_classes = np.max(y)+1,
+		                       discrete_columns = self.discrete_columns,
+		                       R = R,
+		                       Rdis = Rdis,
+		                       Rcon = Rcon,
+		                       Rtogether = Rtogether,
+		                       Rnew = Rnew)
 
 	def __data_transformer_setting(self,X):
 		data_transformer = DataTransformer(self.discrete_columns, need_normalized = True, scale_type = self.scale_type)

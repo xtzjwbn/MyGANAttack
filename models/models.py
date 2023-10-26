@@ -68,7 +68,7 @@ class AutoEncoder(nn.Module):
 
 class netClassificationMLP(nn.Module):
     """
-    Classification Model used to classificate raw data to 0-1
+    Classifier Model used to classificate raw data to 0-1
     """
     def __init__(self, inputDim, outputDim):
         super(netClassificationMLP, self).__init__()
