@@ -279,9 +279,9 @@ class GAN_Attack_Model:
 							random_seed : int = 222):
 
 		X_train, X_test, R_train, R_test, y_train, y_test  = train_test_split(X, R, y, test_size = 0.1, random_state = random_seed)
-		train_set = TensorDataset(torch.from_numpy(R_train), torch.from_numpy(R_train), torch.from_numpy(y_train))
+		train_set = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(R_train), torch.from_numpy(y_train))
 		train_data_loader = DataLoader(train_set, batch_size = batch_size)
-		test_set = TensorDataset(torch.from_numpy(R_test), torch.from_numpy(R_test), torch.from_numpy(y_test))
+		test_set = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(R_test), torch.from_numpy(y_test))
 		test_data_loader = DataLoader(test_set, batch_size = batch_size)
 		return train_data_loader, test_data_loader, y_train.shape[0], y_test.shape[0]
 
