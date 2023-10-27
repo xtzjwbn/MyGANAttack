@@ -3,8 +3,26 @@ import torch
 from pipeline.Preparing.tabular_data_processor import TabularDataProcessor
 from tensorflow.keras.utils import to_categorical
 
+from pipeline.Attacks.BaseAttackModel import BaseModelAttackModel
 
 
+class GreedyAttackModel(BaseModelAttackModel) :
+	def __init__(self, model, processor) :
+		super().__init__(model)
+		self._processor = processor
+
+	def Attack(self,
+	           x_data : np.ndarray,
+	           k : int = 1) -> np.ndarray:
+		return greedy_attack(target_model = self._model, processor = self._processor, K = k, x_data = x_data, device = next(self._model.parameters()).device)
+
+	def Name(self) -> str:
+		return "Greedy"
+
+
+
+
+# TODO: Enhance progress bar display for better visibility.
 def greedy_attack(target_model : torch.nn.Module,
                   processor : TabularDataProcessor,
                   K : int,

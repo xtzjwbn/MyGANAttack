@@ -42,7 +42,6 @@ class TabularDataProcessor:
 		self._data_info = read_data_from_json(filepath)
 
 		name = self._data_info["name"]
-		self.__name__ = name + "_Processor"
 		self._name = name
 		self._scale_type = scale_type
 
@@ -94,6 +93,12 @@ class TabularDataProcessor:
 		data_transformer = DataTransformer(self._discrete_columns, need_normalized = True, scale_type = self._scale_type)
 		data_transformer.fit(X)
 		return data_transformer
+
+	def Serialize(self,filepath):
+		import pickle
+		with open(filepath+f"/{self.__name__}_{self._name}.pkl", "wb") as file :
+			pickle.dump(self, file)
+
 
 	@property
 	def name(self):
