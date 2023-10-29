@@ -9,12 +9,13 @@ from art.attacks.evasion import FastGradientMethod, SaliencyMapMethod
 from art.attacks.evasion.deepfool import DeepFool
 
 class FGSMAttackModel(BaseTorchARTAttackModel):
-	def __init__(self, classifier: PyTorchClassifier) :
+	def __init__(self, classifier: PyTorchClassifier, eps = 0.3) :
 		super().__init__(classifier)
 		self._name = "FGSM"
+		self._eps = eps
 
-	def Attack(self, x_data : np.ndarray, eps = 0.3) -> np.ndarray:
-		return FastGradientMethod(estimator = self._classifier, eps = eps).generate(x=x_data)
+	def Attack(self, x_data : np.ndarray) -> np.ndarray:
+		return FastGradientMethod(estimator = self._classifier, eps = self._eps).generate(x=x_data)
 
 class JSMAAttackModel(BaseTorchARTAttackModel):
 	def __init__(self, classifier: PyTorchClassifier) :

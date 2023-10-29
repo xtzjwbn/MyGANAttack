@@ -33,6 +33,7 @@ class LowProFoolAttackModel(BaseModelAttackModel) :
 
 
 def lowProFool(x, model, maxiters=2000, alpha=0.001, lambda_=8.5) :
+	# from GitHub
 	"""
 	Generates an adversarial examples x' from an original sample x
 	:param x: tabular sample

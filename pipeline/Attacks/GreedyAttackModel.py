@@ -7,19 +7,19 @@ from pipeline.Attacks.BaseAttackModel import BaseModelAttackModel
 
 
 class GreedyAttackModel(BaseModelAttackModel) :
-	def __init__(self, model, processor) :
+	def __init__(self, model, processor, K = 1) :
 		super().__init__(model)
 		self._processor = processor
 		self._name = "Greedy"
+		self._k = K
 
 	def Attack(self,
-	           x_data : np.ndarray,
-	           k : int = 1) -> np.ndarray:
+	           x_data : np.ndarray) -> np.ndarray:
 
 		if self._processor is  None:
 			raise ValueError("Greedy Attack needs a TabularDataProcessor.")
 
-		return greedy_attack(target_model = self._model, processor = self._processor, K = k, x_data = x_data, device = next(self._model.parameters()).device)
+		return greedy_attack(target_model = self._model, processor = self._processor, K = self._k, x_data = x_data, device = next(self._model.parameters()).device)
 
 
 
@@ -30,7 +30,7 @@ def greedy_attack(target_model : torch.nn.Module,
                   K : int,
                   x_data : np.ndarray,
                   device = torch.device("cpu")):
-
+	# from GitHub
 	"""
 	:param target_model:
 	:param processor:

@@ -20,7 +20,6 @@ class TableDataStruct:
 	Rdis : np.ndarray
 	Rcon : np.ndarray
 	Rtogether : np.ndarray
-	Rnew : np.ndarray
 
 
 class TabularDataProcessor:
@@ -75,7 +74,6 @@ class TabularDataProcessor:
 		R = self._data_transformer.transform(x)
 		Rdis, Rcon = self._data_transformer.separate_continuous_discrete_columns(R)
 		Rtogether = self._data_transformer.take_discrete_continuous_together(Rdis, Rcon)
-		Rnew = self._data_transformer.separate_to_ordered_R(Rtogether)
 
 
 		return TableDataStruct(X = x,
@@ -86,8 +84,7 @@ class TabularDataProcessor:
 		                       R = R,
 		                       Rdis = Rdis,
 		                       Rcon = Rcon,
-		                       Rtogether = Rtogether,
-		                       Rnew = Rnew)
+		                       Rtogether = Rtogether)
 
 	def __data_transformer_setting(self,X):
 		data_transformer = DataTransformer(self._discrete_columns, need_normalized = True, scale_type = self._scale_type)

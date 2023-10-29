@@ -8,22 +8,24 @@ from pipeline.Attacks.BaseAttackModel import BaseModelAttackModel
 
 class MyGANAttackModel(BaseModelAttackModel) :
 	# TODO:
-	def __init__(self, model, processor : TabularDataProcessor, gan_model : GAN_Attack_Model):
+	def __init__(self, model, processor : TabularDataProcessor, gan_model : GAN_Attack_Model, K = 1):
 		super().__init__(model)
 		self._processor = processor
 		self._gan_model = gan_model
+
+		self._k = K
+
 		self._name = "MyGAN"
 
 	def Attack(self,
-	           x_data : np.ndarray,
-	           k = 1,
+	           x_data : np.ndarray
 	           ) -> np.ndarray:
 
 		if self._gan_model is None:
 			raise ValueError("MyGAN Attack needs a GAN attack model.")
 
 
-		return MyGANattack(x_data, target_model = self._model, gan_model = self._gan_model, processor = self._processor, K = k, device = next(self._model.parameters()).device)
+		return MyGANattack(x_data, target_model = self._model, gan_model = self._gan_model, processor = self._processor, K = self._k, device = next(self._model.parameters()).device)
 
 
 
