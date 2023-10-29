@@ -11,6 +11,7 @@ class LowProFoolAttackModel(BaseModelAttackModel) :
 
 	def __init__(self,model) :
 		super().__init__(model)
+		self._name = "LowProFool"
 
 	def Attack(self,
 			   x_data: np.ndarray,
@@ -28,9 +29,6 @@ class LowProFoolAttackModel(BaseModelAttackModel) :
 				attack_lpf[i, :] = adv_r
 				pbar.update(1)
 		return attack_lpf
-
-	def Name(self) -> str:
-		return "LowProFool"
 
 
 

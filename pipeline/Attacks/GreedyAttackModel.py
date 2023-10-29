@@ -10,14 +10,16 @@ class GreedyAttackModel(BaseModelAttackModel) :
 	def __init__(self, model, processor) :
 		super().__init__(model)
 		self._processor = processor
+		self._name = "Greedy"
 
 	def Attack(self,
 	           x_data : np.ndarray,
 	           k : int = 1) -> np.ndarray:
-		return greedy_attack(target_model = self._model, processor = self._processor, K = k, x_data = x_data, device = next(self._model.parameters()).device)
 
-	def Name(self) -> str:
-		return "Greedy"
+		if self._processor is  None:
+			raise ValueError("Greedy Attack needs a TabularDataProcessor.")
+
+		return greedy_attack(target_model = self._model, processor = self._processor, K = k, x_data = x_data, device = next(self._model.parameters()).device)
 
 
 

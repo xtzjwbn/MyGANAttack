@@ -305,7 +305,7 @@ class GAN_Attack_Model:
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/GAN_{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/GAN_Model_{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	@property

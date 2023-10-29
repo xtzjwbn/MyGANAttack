@@ -4,13 +4,14 @@ from art.estimators.classification import PyTorchClassifier
 
 class BaseAttackModel :
 	def __init__(self) :
-		pass
+		self.name = ""
 
 	def Attack(self,x_data : np.ndarray) -> np.ndarray:
 		return x_data
 
+	@property
 	def Name(self) -> str:
-		return ""
+		return self.name
 
 class BaseTorchARTAttackModel(BaseAttackModel):
 	"""

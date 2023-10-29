@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from pipeline.Preparing.tabular_data_processor import TabularDataProcessor
+from pipeline.GAN.GAN_Attack_Model import GAN_Attack_Model
 
 from art.estimators.classification import PyTorchClassifier
 
@@ -14,6 +15,7 @@ class Comparison:
 	def __init__(self,
 				 model : torch.nn.Module,
 				 processor : TabularDataProcessor = None,
+	             gan_model : GAN_Attack_Model = None,
 				 art_classifier : PyTorchClassifier = None,
 				 fit_finished : bool = True,):
 		self._attack_algorithm_map = {}
@@ -21,8 +23,7 @@ class Comparison:
 		self._adv_map_processed = {}
 		self._model = model
 		self._processor = processor
-		self._x = []
-		self._y = []
+		self._gan_model = gan_model
 
 		# TODO: We need better decoupling.
 		if art_classifier is None:
@@ -54,7 +55,8 @@ class Comparison:
 		self._attack_algorithm_map[name]= GetAttack(name = name,
 													classifier = self._art_classifier,
 													model = self._model,
-													processor = self._processor)
+													processor = self._processor,
+		                                            gan_model = self._gan_model)
 		self._adv_map[name] = -1
 
 	def StartComparison(self,x_data : np.ndarray, y_data : np.ndarray):
@@ -134,7 +136,8 @@ class Comparison:
 def GetAttack(name : str,
 			  classifier : PyTorchClassifier = None,
 			  model : torch.nn.Module = None,
-			  processor : TabularDataProcessor = None
+			  processor : TabularDataProcessor = None,
+              gan_model : GAN_Attack_Model = None,
 			  ) -> BaseAttackModel:
 	if name == "FGSM":
 		return FGSMAttackModel(classifier)
@@ -147,6 +150,6 @@ def GetAttack(name : str,
 	elif name == "LowProFool":
 		return LowProFoolAttackModel(model)
 	elif name == "MyGAN":
-		return MyGANAttackModel(model)
+		return MyGANAttackModel(model, processor, gan_model)
 	else:
 		raise ValueError(f"The comparison not supports the Algorithm Name: {name}.")
