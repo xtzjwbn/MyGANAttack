@@ -4,6 +4,8 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader, WeightedRandomSampler
 from torch.optim.lr_scheduler import StepLR
 
+from  Utils.Checking import check_none
+
 from sklearn.model_selection import train_test_split
 import matplotlib
 matplotlib.use('TKAgg')
@@ -42,12 +44,9 @@ class Classifier():
 	    weighted = -1,
 	    random_seed = 222,):
 
-		if self._model is None :
-			raise ValueError("A model is needed to train the model, but none for provided.")
-		if self._optimizer is None :
-			raise ValueError("An optimizer is needed to train the model, but none for provided.")
-		if self._loss is None :
-			raise ValueError("A loss function is needed to train the model, but none for provided.")
+		check_none(self._model, "Model")
+		check_none(self._optimizer, "Optimizer")
+		check_none(self._loss, "Loss Function")
 
 		self._model.train()
 
@@ -152,7 +151,7 @@ class Classifier():
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/Classifier_{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	def _dataloader_setting(self,

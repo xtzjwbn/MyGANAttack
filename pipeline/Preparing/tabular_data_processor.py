@@ -45,7 +45,7 @@ class TabularDataProcessor:
 		self._scale_type = scale_type
 
 		#############################################
-		# TODO: write to json better
+		# TODO: this part should write outside, write to json better
 		#############################################
 		if name == "German" :
 			data = pd.read_csv(self._data_info["path"], header = None, delimiter = " ")

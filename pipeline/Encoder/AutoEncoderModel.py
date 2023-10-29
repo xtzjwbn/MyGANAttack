@@ -5,6 +5,8 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch.optim.lr_scheduler import StepLR
 from sklearn.model_selection import train_test_split
 
+from Utils.Checking import check_none
+
 import os
 
 import matplotlib.pyplot as plt
@@ -39,14 +41,12 @@ class AutoEncoderModel:
         x: np.ndarray,
         batch_size: int = 128,
         epochs: int = 100,
-	    random_seed = 222,):
+	    random_seed = 222,
+	    draw_pics = False):
 
-		if self._model is None :
-			raise ValueError("A model is needed to train the model, but none for provided.")
-		if self._optimizer is None :
-			raise ValueError("An optimizer is needed to train the model, but none for provided.")
-		if self._loss is None :
-			raise ValueError("A loss function is needed to train the model, but none for provided.")
+		check_none(self._model, "Model")
+		check_none(self._optimizer, "Optimizer")
+		check_none(self._loss, "Loss Function")
 
 		self._model.train()
 
@@ -123,9 +123,11 @@ class AutoEncoderModel:
 				print(f"---------EPOCH:{epoch + 1}---------")
 				print(f"loss_train:{np.mean(np.array(loss_train))}  norm_train:{np.mean(np.array(norm_train))}")
 				print(f"loss_test :{np.mean(np.array(loss_test))}  norm_test :{np.mean(np.array(norm_test))}")
-		plt.figure()
-		plt.plot(loss_history)
-		plt.show()
+
+		if draw_pics:
+			plt.figure()
+			plt.plot(loss_history)
+			plt.show()
 
 	def save_model(self, filepath):
 		os.makedirs(filepath, exist_ok = True)
@@ -134,7 +136,7 @@ class AutoEncoderModel:
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/AutoEncoder_{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	def _dataloader_setting(self,

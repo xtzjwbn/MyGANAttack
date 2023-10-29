@@ -11,6 +11,8 @@ from pipeline.Attacks.LowProFoolAttackModel import LowProFoolAttackModel
 from pipeline.Attacks.MyGANAttackModel import MyGANAttackModel
 from pipeline.Attacks.AttackAlgorithmsFromART import FGSMAttackModel, JSMAAttackModel, DeepFoolAttackModel
 
+from Utils.Checking import check_none
+
 class Comparison:
 	def __init__(self,
 				 model : torch.nn.Module,
@@ -107,6 +109,9 @@ class Comparison:
 
 	def ShowComparison(self):
 		# self.Attacking_All()
+		check_none(self._x, "Comparison Phrase, data x ")
+		check_none(self._y, "Comparison Phrase, data y ")
+
 		predictions = self._art_classifier.predict(self._x)
 		pred_benign = np.argmax(predictions, axis = 1)
 

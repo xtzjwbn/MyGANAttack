@@ -6,6 +6,8 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch.optim.lr_scheduler import StepLR
 from sklearn.model_selection import train_test_split
 
+from Utils.Checking import check_none
+
 import os
 
 import matplotlib.pyplot as plt
@@ -66,28 +68,21 @@ class GAN_Attack_Model:
 		alpha_adv:float,
 		batch_size: int = 128,
 		epochs: int = 100,
-		random_seed = 222,):
+		random_seed = 222,
+	    draw_pics = False):
 
 		self._eps = eps
 		self._alpha_norm = alpha_norm
 		self._alpha_adv = alpha_adv
 
-		if self._target_model is None :
-			raise ValueError("A target model is needed to train the model, but none for provided.")
-		if self._auto_encoder_model is None :
-			raise ValueError("An auto encoder model is needed to train the model, but none for provided.")
-		if self._generator_model is None :
-			raise ValueError("A model of Generator is needed to train the model, but none for provided.")
-		if self._generator_optimizer is None :
-			raise ValueError("An optimizer of Generator is needed to train the model, but none for provided.")
-		# if self._generator_loss is None :
-		# 	raise ValueError("A loss function of Generator is needed to train the model, but none for provided.")
-		if self._discriminator_model is None :
-			raise ValueError("A model of Discriminator is needed to train the model, but none for provided.")
-		if self._discriminator_optimizer is None :
-			raise ValueError("An optimizer of Discriminator is needed to train the model, but none for provided.")
-		# if self._discriminator_loss is None :
-		# 	raise ValueError("A loss function of Discriminator is needed to train the model, but none for provided.")
+		check_none(self._target_model, "Target Model")
+		check_none(self._auto_encoder_model, "Encoder Model")
+		check_none(self._generator_model, "Generator Model")
+		check_none(self._generator_optimizer, "Generator Optimizer")
+		# check_none(self._generator_loss, "Generator Loss")
+		check_none(self._discriminator_model, "Discriminator Model")
+		check_none(self._discriminator_optimizer, "Discriminator Optimizer")
+		# check_none(self._discriminator_loss, "Discriminator Loss")
 
 		self._target_model.eval()
 		self._auto_encoder_model.eval()
@@ -261,15 +256,15 @@ class GAN_Attack_Model:
 					f"accTest:{accuracyTest / self._size_test:.4f} accAdvTest:{accuracyAdvTest / self._size_test:.4f} "
 					f"sucTest:{successTest / self._size_test:.4f} normTest:{normTest / self._size_test:.4f} "
 					f"continuousNormTest:{conNormTest / self._size_test}")
-
-		plt.figure()
-		plt.plot(loss_D_history, label = 'loss_D')
-		# plt.plot(loss_G_history, label= 'loss_G_tot')
-		plt.plot(loss_G_just_history, label = 'loss_G_fake')
-		plt.plot(loss_norm_history, label = 'loss_norm')
-		plt.plot(loss_adv_history, label = 'loss_adv')
-		plt.legend(loc = 0)
-		plt.show()
+		if draw_pics:
+			plt.figure()
+			plt.plot(loss_D_history, label = 'loss_D')
+			# plt.plot(loss_G_history, label= 'loss_G_tot')
+			plt.plot(loss_G_just_history, label = 'loss_G_fake')
+			plt.plot(loss_norm_history, label = 'loss_norm')
+			plt.plot(loss_adv_history, label = 'loss_adv')
+			plt.legend(loc = 0)
+			plt.show()
 
 	def _dataloader_setting(self,
 							X : np.ndarray,
@@ -305,7 +300,7 @@ class GAN_Attack_Model:
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/GAN_Model_{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	@property
