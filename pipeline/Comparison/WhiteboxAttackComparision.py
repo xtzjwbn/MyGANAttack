@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import os, csv
 from pipeline.Preparing.tabular_data_processor import TabularDataProcessor
 from pipeline.GAN.GAN_Attack_Model import GAN_Attack_Model
 
@@ -14,12 +15,22 @@ from pipeline.Attacks.AttackAlgorithmsFromART import FGSMAttackModel, JSMAAttack
 from Utils.Checking import check_none
 
 class Comparison:
+	"""
+	Methods:
+		AddAttackModel : Add Attack Model with name and params and save them in self._attack_algorithm_map. IT IS A DICTIONARY!
+		SetData : Set dataset which used to attack
+		Attacking_All : Start attack with all attacks in self._attack_algorithm_map.
+						And save adv sample data in self._adv_map = {}, self._adv_map_processed = {}. They are also DICTIONARIES.
+		ShowComparison : Calculate indexes using the adv data and benign data.
+	"""
 	def __init__(self,
 				 model : torch.nn.Module,
 				 processor : TabularDataProcessor = None,
-	             gan_model : GAN_Attack_Model = None,
+				 gan_model : GAN_Attack_Model = None,
 				 art_classifier : PyTorchClassifier = None,
 				 fit_finished : bool = True,):
+		self._name = processor.name
+
 		self._attack_algorithm_map = {}
 		self._adv_map = {}
 		self._adv_map_processed = {}
@@ -32,7 +43,7 @@ class Comparison:
 
 		# TODO: We need better decoupling.
 		if art_classifier is None:
-			self._art_classifier = PyTorchClassifier(model=self._model,loss=torch.nn.CrossEntropyLoss(),input_shape=processor.tabular_data.Rtogether.shape[1],nb_classes=2,)
+			self._art_classifier = PyTorchClassifier(model=self._model, optimizer=torch.optim.Adam(self._model.parameters()),loss=torch.nn.CrossEntropyLoss(),input_shape=processor.tabular_data.Rtogether.shape[1],nb_classes=2,)
 
 		if not fit_finished:
 			self._fit()
@@ -95,8 +106,8 @@ class Comparison:
 													classifier = self._art_classifier,
 													model = self._model,
 													processor = self._processor,
-		                                            gan_model = self._gan_model,
-		                                            **kwargs)
+													gan_model = self._gan_model,
+													**kwargs)
 		self._adv_map[saving_name] = None
 
 		return self
@@ -171,32 +182,54 @@ class Comparison:
 		for key in self._attack_algorithm_map:
 			ans.append(self._attack_algorithm_map[key].Name())
 		return ans
+
+	def save_adv_data(self, filepath):
+		for key in self._adv_map:
+			if self._adv_map[key] is None or self._adv_map_processed[key] is None:
+				continue
+			os.makedirs(filepath + f"/{self._name}", exist_ok = True)
+			np.save(filepath + f"/{self._name}_adv_raw_data",self._adv_map[key])
+			np.save(filepath + f"/{self._name}_adv_processed_data",self._adv_map_processed[key])
+
+	def Serialize(self, filepath):
+		import pickle
+		with open(filepath+f"/{self.__class__.__name__}_{self._name}.pkl", "wb") as file :
+			pickle.dump(self, file)
+
 	@property
 	def attack_algorithm_list(self):
 		return self._attack_algorithm_map
 	@property
 	def adv_map(self):
 		return self._adv_map
+	@property
+	def adv_map_processed(self):
+		return self._adv_map_processed
+
+	@property
+	def target_model(self):
+		return self._model
+
+	@target_model.setter
+	def target_model(self,model : torch.nn.Module):
+		self._model = model
+		self._art_classifier = PyTorchClassifier(model = self._model, loss = torch.nn.CrossEntropyLoss(),
+		                                         input_shape = self._processor.tabular_data.Rtogether.shape[1],
+		                                         nb_classes = 2, )
 
 	@property
 	def x(self):
 		return self._x
-	@x.setter
-	def x(self, x_):
-		self._x = x_
 	@property
 	def y(self):
 		return self._y
-	@y.setter
-	def y(self, y_):
-		self._y = y_
 
 def GetAttack(name : str,
 			  classifier : PyTorchClassifier = None,
 			  model : torch.nn.Module = None,
 			  processor : TabularDataProcessor = None,
-              gan_model : GAN_Attack_Model = None,
-              **kwargs
+			  gan_model : GAN_Attack_Model = None,
+			  **kwargs
 			  ) -> BaseAttackModel:
 	if name == "FGSM":
 		if "eps" in kwargs:

@@ -136,7 +136,7 @@ class AutoEncoderModel:
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/{self.__class__.__name__}_{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	def _dataloader_setting(self,

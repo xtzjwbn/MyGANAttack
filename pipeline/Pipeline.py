@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import copy
 from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import StepLR
 
@@ -13,6 +14,14 @@ from pipeline.Comparison.WhiteboxAttackComparision import Comparison
 from Utils.Checking import check_type, check_none
 
 class Pipeline:
+	"""
+	The PIPELINE:
+	TabularDataProcessor
+		-> Classifier Setting & Fitting -> Encoder Setting & Fitting -> GAN Setting & Fitting            (MyGAN Attack Model Fitting)
+		-> (Serialization)
+		-> Comparison                                                                                    (Comparison with Other Attack Algorithms)
+		-> Defense -> Defense Comparison                                                                 (Adv Defense)
+	"""
 	def __init__(self,
 				 json : str = "../Data/German.json",
 				 device = torch.device("cpu")):
@@ -23,6 +32,12 @@ class Pipeline:
 		self._encoder = None
 		self._gan = None
 		self._comparison = None
+
+		# defense
+		self._new_classifier = None
+		self._classifier_batch_size = None
+		self._classifier_epochs = None
+		self._new_classifier_map = {}
 
 		# hyperparameter
 		self._encoder_dim = None
@@ -43,19 +58,25 @@ class Pipeline:
 		check_type(self._classifier, Classifier, "Classifier")
 		check_type(self._train_x, np.ndarray, "Classifier Fitting Phrase, train_x")
 		check_type(self._train_y, np.ndarray, "Classifier Fitting Phrase, train_y")
+		self._classifier_batch_size = batch_size
+		self._classifier_epochs = epochs
 
 		weighted = self._processor.data_info["weighted"]
+		print("#####################\033[0;31mClassifier Fitting Phrase\033[0m #####################")
 		self._classifier.fit(x = self._train_x,
 							 y = self._train_y,
 							 batch_size = batch_size,
 							 epochs = epochs,
 							 weighted = weighted)
+		print("####################################################################")
 
 	def EncoderFit(self,batch_size : int = 100, epochs : int = 2000,):
 		check_type(self._encoder, AutoEncoderModel, "Encoder")
 		check_type(self._train_x, np.ndarray,"Encoder Fitting Phrase, train_x")
 
+		print("#####################\033[0;31mEncoder Fitting Phrase\033[0m ########################")
 		self._encoder.fit(x = self._train_x[:, self._processor.tabular_data.separate_num:], batch_size = batch_size, epochs = epochs)
+		print("####################################################################")
 
 	def GANFit(self,
 			   K : int = 1,
@@ -75,6 +96,7 @@ class Pipeline:
 		self._alpha_norm = alpha_norm
 		self._alpha_adv = alpha_adv
 
+		print("#####################\033[0;31mGreedy Fitting Phrase\033[0m #########################")
 		# TODO: Hope a better interface, not just greedy_attack
 		A = greedy_attack(target_model = self._classifier.model,
 						  processor = self._processor,
@@ -82,6 +104,7 @@ class Pipeline:
 						  x_data = self._train_x,
 						  device = self._device)
 
+		print("#####################\033[0;31mGAN Fitting Phrase\033[0m ############################")
 		self._gan.fit(X = self._train_x,
 					  R = A,
 					  y = self._train_y,
@@ -92,6 +115,7 @@ class Pipeline:
 					  batch_size = batch_size,
 					  epochs = epochs
 					  )
+		print("####################################################################")
 
 	def GetComparison(self):
 		if self._comparison is None:
@@ -107,6 +131,40 @@ class Pipeline:
 
 	def ShowComparison(self):
 		self._comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+
+	# TODO: More Defense Methods
+	def DataAugmentationFit(self):
+		self._comparison.SetData(self._train_x, self._train_y).Attacking_All()
+		raw_adv_map = self._comparison.adv_map
+		processed_adv_map =self._comparison.adv_map_processed
+		weighted = self._processor.data_info["weighted"]
+
+		for key in processed_adv_map:
+			print(f"-----------Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples FITTING START!-----------")
+			new_train_x = np.vstack((self._train_x, processed_adv_map[key]))
+			new_train_y = np.hstack((self._train_y, self._train_y))
+			self._new_classifier_map[key] = copy.deepcopy(self._new_classifier)
+			self._new_classifier_map[key].fit(x = new_train_x,
+							 y = new_train_y,
+							 batch_size = self._classifier_batch_size,
+							 epochs = self._classifier_epochs,
+							 weighted = weighted)
+			print("---------------------------------------------------------------------------------------------------------")
+
+	def DefenseComparison(self):
+		# check_none(self._classifier, "Defense Comparison Phrase, Classifier")
+		check_none(self._processor, "Defense Comparison Phrase, TabularDataProcessor")
+		check_none(self._gan, "Defense Comparison Phrase, GAN")
+		for key in self._new_classifier_map:
+			print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+			comparison =  copy.deepcopy(self._comparison)
+			comparison.target_model = self._new_classifier_map[key].model
+			comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+			print("-----------------------------------------------------------------------------------------------------------------")
+
+		return self._comparison
+
+
 
 
 	def SetNewDataSet(self,
@@ -136,14 +194,14 @@ class Pipeline:
 		optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
 		schedule = StepLR(optimizer, step_size=step_size, gamma=gamma)
 		self._classifier = Classifier(
-			name=self._processor.name+"_target",
+			name=self._processor.name,
 			model=model,
 			optimizer=optimizer,
 			loss=loss,
 			schedule=schedule,
 			device=self._device
 			)
-
+		self._new_classifier = copy.deepcopy(self._classifier)
 
 
 	@property
@@ -158,7 +216,7 @@ class Pipeline:
 		model = model_type(input_dim=self._processor.tabular_data.Rcon.shape[1], code_dim=encoder_dim).to(self._device)
 		optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
 		schedule = StepLR(optimizer, step_size=step_size, gamma=gamma)
-		self._encoder = AutoEncoderModel(name = self._processor.name+"_AE",
+		self._encoder = AutoEncoderModel(name = self._processor.name,
 										model = model,
 										optimizer = optimizer,
 										loss = loss,
@@ -180,7 +238,7 @@ class Pipeline:
 		discriminator_model = discriminator_model_type(self._processor.tabular_data.Rtogether.shape[1]).to(self._device)
 		discriminator_optimizer = torch.optim.RMSprop(discriminator_model.parameters(), lr=discriminator_lr)
 		self._gan = GAN_Attack_Model(
-			name =  self._processor.name+"_GAN",
+			name =  self._processor.name,
 			target_model = self._classifier.model,
 			auto_encoder_model = self._encoder.model,
 			generator_model = generator_model,
@@ -193,7 +251,7 @@ class Pipeline:
 
 	def Serialize(self,filepath):
 		import pickle
-		with open(filepath+f"/Pipeline_Model_{self._name}.pkl", "wb") as file :
+		with open(filepath+f"/{self.__class__.__name__}_{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
 
 	def SaveModels(self, filepath):
