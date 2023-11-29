@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import os, csv
+import pandas as pd
 from pipeline.Preparing.tabular_data_processor import TabularDataProcessor
 from pipeline.GAN.GAN_Attack_Model import GAN_Attack_Model
 
@@ -40,6 +41,9 @@ class Comparison:
 
 		self._x = None
 		self._y = None
+
+		self._result_success = {}
+		self._result_norm = {}
 
 		# TODO: We need better decoupling.
 		if art_classifier is None:
@@ -119,7 +123,6 @@ class Comparison:
 		return self
 
 	def ShowComparison(self):
-		# self.Attacking_All()
 		check_none(self._x, "Comparison Phase, data x ")
 		check_none(self._y, "Comparison Phase, data y ")
 
@@ -134,13 +137,13 @@ class Comparison:
 			if self._adv_map[key] is None:
 				continue
 			print(f"----------------------------(\033[0;31m{key}\033[0m)-----------------------------")
-			self._AccuracyCalc(key, pred_origin)
-			self._NormCalc(key)
+			self._result_success[key] = self._SuccessCalc(key, pred_origin)
+			self._result_norm[key] = self._NormCalc(key)
 
 			# TODO: better data visualization
 			print(f"------------------------------------------------------------------------\n\n")
 
-	def _AccuracyCalc(self, key, data_origin):
+	def _SuccessCalc(self, key, data_origin):
 		pred_raw = self._art_classifier.predict(self._adv_map[key])
 		pred_processed = self._art_classifier.predict(self._adv_map_processed[key])
 		pred_raw = np.argmax(pred_raw, axis = 1)
@@ -152,10 +155,14 @@ class Comparison:
 		success_rate_on_processed = np.sum(pred_processed != data_origin) / len(pred_processed)
 		change_rate = np.sum(pred_raw != pred_processed) / len(self._y)
 
-		print(f"----Accuracy on RAW / PROCESSED adv-examples : (\033[0;31m{accuracy_on_raw * 100}\033[0m)% ------> (\033[0;31m{accuracy_on_processed * 100}\033[0m)%")
-		print(f"Success Rate on RAW / PROCESSED adv-examples : (\033[0;31m{success_rate_on_raw * 100}\033[0m)% ------> (\033[0;31m{success_rate_on_processed * 100}\033[0m)%")
-		print(f"Change Rate after processed : (\033[0;31m{change_rate * 100}\033[0m)%")
-		return accuracy_on_raw, success_rate_on_raw, accuracy_on_processed, success_rate_on_processed, change_rate
+		print(f"----Accuracy on RAW / PROCESSED adv-examples : (\033[0;31m{accuracy_on_raw * 100 :.3f}\033[0m)% ------> (\033[0;31m{accuracy_on_processed * 100 :.3f}\033[0m)%")
+		print(f"Success Rate on RAW / PROCESSED adv-examples : (\033[0;31m{success_rate_on_raw * 100 :.3f}\033[0m)% ------> (\033[0;31m{success_rate_on_processed * 100 :.3f}\033[0m)%")
+		print(f"Change Rate after processed : (\033[0;31m{change_rate * 100 :.3f}\033[0m)%")
+		return {"accuracy_on_raw" : accuracy_on_raw,
+		        "success_rate_on_raw" : success_rate_on_raw,
+		        "accuracy_on_pro" : accuracy_on_processed,
+		        "success_rate_on_pro" : success_rate_on_processed,
+		        "change_rate" : change_rate}
 
 	def _NormCalc(self, key):
 		pert_raw = self._adv_map[key] - self._x
@@ -183,7 +190,20 @@ class Comparison:
 		discrete_change_num_pro = np.mean(np.linalg.norm(pert_processed[:, : self._processor.tabular_data.separate_num], ord = 0, axis = 1))/2
 		print(f"Discrete Change Number : (\033[0;31m{discrete_change_num_pro}\033[0m)")
 
-		return continuous_l0, continuous_l1, continuous_l2, continuous_linf, discrete_change_num_pro
+		return {"all_l0_raw" : all_l0_raw,
+		        "all_l1_raw" : all_l1_raw,
+		        "all_l2_raw" : all_l2_raw,
+		        "all_linf_raw" : all_linf_raw,
+		        "all_l0_pro" : all_l0_pro,
+		        "all_l1_pro" : all_l1_pro,
+		        "all_l2_pro" : all_l2_pro,
+		        "all_linf_pro" : all_linf_pro,
+		        "continuous_l0" : continuous_l0,
+		        "continuous_l1" : continuous_l1,
+		        "continuous_l2" : continuous_l2,
+		        "continuous_linf" : continuous_linf,
+		        "discrete_change_num" : discrete_change_num_pro
+		        }
 
 	def _fit(self):
 		# TODO: art_classifier fitting
@@ -195,6 +215,18 @@ class Comparison:
 			ans.append(self._attack_algorithm_map[key].Name())
 		return ans
 
+	def data_frame_output(self):
+		df1 = pd.DataFrame.from_dict(self._result_success, orient = 'index')
+		df2 = pd.DataFrame.from_dict(self._result_norm, orient = 'index')
+		df = pd.concat([df1, df2], axis = 1)
+		df['Algorithm'] = df.index
+		df = df[['Algorithm'] + [col for col in df.columns if col != 'Algorithm']]
+		return df
+
+	def ExcelOutput(self, filepath):
+		df = self.data_frame_output()
+		with pd.ExcelWriter(filepath+f"/{self.__class__.__name__}_{self._name}.xlsx", engine='xlsxwriter') as writer:
+			df.to_excel(writer, sheet_name = 'Summary', index = True)
 	def save_adv_data(self, filepath):
 		for key in self._adv_map:
 			if self._adv_map[key] is None or self._adv_map_processed[key] is None:
@@ -207,6 +239,14 @@ class Comparison:
 		import pickle
 		with open(filepath+f"/{self.__class__.__name__}_{self._name}.pkl", "wb") as file :
 			pickle.dump(self, file)
+
+	@property
+	def name(self):
+		return self._name
+
+	@name.setter
+	def name(self,name):
+		self._name = name
 
 	@property
 	def attack_algorithm_list(self):
@@ -235,6 +275,13 @@ class Comparison:
 	@property
 	def y(self):
 		return self._y
+
+	@property
+	def result_success(self):
+		return self._result_success
+	@property
+	def result_norm(self):
+		return self._result_norm
 
 # TODO: gan_model should be a parameter of GetAttack or a parameter in kwargs?
 def GetAttack(name : str,

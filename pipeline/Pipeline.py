@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import copy
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import StepLR
 
@@ -41,10 +42,13 @@ class Pipeline:
 
 		# self._data_augment_finished = False
 		self._data_augment_classifier_map = {}
+		self._data_augment_classifier_result = {}
 		# self._fine_tune_all_elements_finished = False
 		self._fine_tune_all_elements_classifier_map = {}
+		self._fine_tune_all_elements_classifier_result = {}
 		# self._fine_tune_last_layer_finished = False
 		self._fine_tune_last_layer_classifier_map = {}
+		self._fine_tune_last_layer_classifier_result = {}
 
 		# hyperparameter
 		self._encoder_dim = None
@@ -152,10 +156,10 @@ class Pipeline:
 			new_train_y = np.hstack((self._train_y, self._train_y))
 			self._data_augment_classifier_map[key] = copy.deepcopy(self._new_classifier)
 			self._data_augment_classifier_map[key].fit(x = new_train_x,
-			                                           y = new_train_y,
-			                                           batch_size = self._classifier_batch_size,
-			                                           epochs = self._classifier_epochs,
-			                                           weighted = self._processor.data_info["weighted"])
+													   y = new_train_y,
+													   batch_size = self._classifier_batch_size,
+													   epochs = self._classifier_epochs,
+													   weighted = self._processor.data_info["weighted"])
 			print("---------------------------------------------------------------------------------------------------------")
 
 
@@ -167,10 +171,10 @@ class Pipeline:
 			new_train_y = self._train_y
 			self._fine_tune_all_elements_classifier_map[key] = copy.deepcopy(self._classifier)
 			self._fine_tune_all_elements_classifier_map[key].fit(x = new_train_x,
-			                                           y = new_train_y,
-			                                           batch_size = self._classifier_batch_size,
-			                                           epochs = epochs,
-			                                           weighted = self._processor.data_info["weighted"])
+													   y = new_train_y,
+													   batch_size = self._classifier_batch_size,
+													   epochs = epochs,
+													   weighted = self._processor.data_info["weighted"])
 			print("---------------------------------------------------------------------------------------------------------")
 
 	def FineTuneLastLayerFit(self, epochs = 50, if_process = True):
@@ -189,17 +193,17 @@ class Pipeline:
 			for param in last_layer.parameters() :
 				param.requires_grad = True
 			optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self._fine_tune_last_layer_classifier_map[key].model.parameters()),
-			                             lr = self._classifier_lr)
+										 lr = self._classifier_lr)
 
 			self._fine_tune_last_layer_classifier_map[key].optimizer = optimizer
 			self._fine_tune_last_layer_classifier_map[key].fit(x = new_train_x,
-			                                           y = new_train_y,
-			                                           batch_size = self._classifier_batch_size,
-			                                           epochs = epochs,
-			                                           weighted = self._processor.data_info["weighted"])
+													   y = new_train_y,
+													   batch_size = self._classifier_batch_size,
+													   epochs = epochs,
+													   weighted = self._processor.data_info["weighted"])
 			print("---------------------------------------------------------------------------------------------------------")
 
-	def DefenseComparison(self, is_data_augment = True, is_fine_tune_all_elements = True, is_fine_tune_last_layer = True):
+	def DefenseComparison(self, filepath = '.', is_data_augment = True, is_fine_tune_all_elements = True, is_fine_tune_last_layer = True):
 		# check_none(self._classifier, "Defense Comparison Phase, Classifier")
 		check_none(self._processor, "Defense Comparison Phase, TabularDataProcessor")
 		check_none(self._gan, "Defense Comparison Phase, GAN")
@@ -208,30 +212,100 @@ class Pipeline:
 
 		if is_data_augment:
 			self.DataAugmentationFit()
+			# self._data_augment_classifier_result = {}
+			success_map = {}
+			norm_map = {}
 			for key in self._data_augment_classifier_map:
 				print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
 				comparison = copy.deepcopy(self._comparison)
 				comparison.target_model = self._data_augment_classifier_map[key].model
 				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				success_map[key] = comparison.result_success
+				norm_map[key] = comparison.result_norm
 				print("-----------------------------------------------------------------------------------------------------------------")
+
+			algorithms = list(success_map.keys())
+			algorithms_attack = list(item + " Attack" for item in algorithms)
+			algorithms_defense = list(item + " Defense" for item in algorithms)
+			a = success_map[next(iter(success_map))]
+			b = list(a[next(iter(a))].keys())
+			output = {}
+			for metric in b :
+				df = pd.DataFrame(index=algorithms_attack, columns=algorithms_defense)
+				for out_alg in algorithms:
+					for in_alg in algorithms:
+						df.loc[in_alg + " Attack", out_alg + " Defense"] = success_map[out_alg][in_alg][metric]
+				output[metric] = df
+
+			with pd.ExcelWriter(filepath+f"/{self.__class__.__name__}_DataAugmentation_{self._name}.xlsx") as writer:
+				for metric in output:
+					output[metric].to_excel(writer, sheet_name=metric)
+				writer.save()
+
 
 		if is_fine_tune_all_elements:
 			self.FineTuneAllElementsFit()
+			success_map = {}
+			norm_map = {}
 			for key in self._fine_tune_all_elements_classifier_map:
 				print(f"-----------DefenseComparison with FineTune All Elements with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
 				comparison = copy.deepcopy(self._comparison)
 				comparison.target_model = self._fine_tune_all_elements_classifier_map[key].model
 				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				success_map[key] = comparison.result_success
+				norm_map[key] = comparison.result_norm
 				print("-----------------------------------------------------------------------------------------------------------------")
+
+			algorithms = list(success_map.keys())
+			algorithms_attack = list(item + " Attack" for item in algorithms)
+			algorithms_defense = list(item + " Defense" for item in algorithms)
+			a = success_map[next(iter(success_map))]
+			b = list(a[next(iter(a))].keys())
+			output = {}
+			for metric in b :
+				df = pd.DataFrame(index=algorithms_attack, columns=algorithms_defense)
+				for out_alg in algorithms:
+					for in_alg in algorithms:
+						df.loc[in_alg + " Attack", out_alg + " Defense"] = success_map[out_alg][in_alg][metric]
+				output[metric] = df
+
+			with pd.ExcelWriter(filepath+f"/{self.__class__.__name__}_FineTuneAllElements_{self._name}.xlsx") as writer:
+				for metric in output:
+					output[metric].to_excel(writer, sheet_name=metric)
+				writer.save()
 
 		if is_fine_tune_last_layer:
 			self.FineTuneLastLayerFit()
+			success_map = {}
+			norm_map = {}
 			for key in self._fine_tune_last_layer_classifier_map:
 				print(f"-----------DefenseComparison with FineTune Last Layer with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
 				comparison = copy.deepcopy(self._comparison)
 				comparison.target_model = self._fine_tune_last_layer_classifier_map[key].model
 				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				success_map[key] = comparison.result_success
+				norm_map[key] = comparison.result_norm
 				print("-----------------------------------------------------------------------------------------------------------------")
+
+			algorithms = list(success_map.keys())
+			algorithms_attack = list(item + " Attack" for item in algorithms)
+			algorithms_defense = list(item + " Defense" for item in algorithms)
+			a = success_map[next(iter(success_map))]
+			b = list(a[next(iter(a))].keys())
+			output = {}
+			for metric in b :
+				df = pd.DataFrame(index=algorithms_attack, columns=algorithms_defense)
+				for out_alg in algorithms:
+					for in_alg in algorithms:
+						df.loc[in_alg + " Attack", out_alg + " Defense"] = success_map[out_alg][in_alg][metric]
+				output[metric] = df
+
+			with pd.ExcelWriter(filepath+f"/{self.__class__.__name__}_FineTuneLastLayer_{self._name}.xlsx") as writer:
+				for metric in output:
+					output[metric].to_excel(writer, sheet_name=metric)
+				writer.save()
+
+
 		return # self._comparison
 
 

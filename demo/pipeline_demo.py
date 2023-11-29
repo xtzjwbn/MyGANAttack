@@ -79,6 +79,7 @@ comparison.AddAttackModel("Deepfool")
 comparison.AddAttackModel("Greedy",K=2)
 comparison.AddAttackModel("MyGAN",K=2)
 pipeline.ShowComparison()
+comparison.ExcelOutput(".")
 
 #############################################
 #############################################
@@ -90,7 +91,7 @@ pipeline.Serialize("../models/German")
 ######### Data Augmentation Phase  (da) #####
 #############################################
 
-pipeline.DefenseComparison(False,True,True)
+pipeline.DefenseComparison(".",False,True,True)
 
 #############################################
 #############################################
