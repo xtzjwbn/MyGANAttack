@@ -12,7 +12,7 @@ random_seed = 222
 pipeline.SplitTrainAndTest(0.1, 222)
 
 #############################################
-######### Classifier Phrase (cf)#############
+######### Classifier Phase  (cf)#############
 #############################################
 cf_lr = 2e-4
 cf_loss = torch.nn.CrossEntropyLoss()
@@ -30,7 +30,7 @@ pipeline.ClassifierFit(batch_size = cf_batch_size, epochs = cf_epochs)
 
 
 #############################################
-######### Encoder Phrase (ec) ###############
+######### Encoder Phase  (ec) ###############
 #############################################
 ec_lr = 5e-3
 ec_dim = 64
@@ -49,7 +49,7 @@ pipeline.EncoderFit(batch_size = ec_batch_size, epochs = ec_epochs)
 
 
 #############################################
-############# GAN Phrase (gan) ##############
+############# GAN Phase  (gan) ##############
 #############################################
 lrG = 5e-5
 lrD = 5e-5
@@ -69,7 +69,7 @@ pipeline.GANFit(K = K, eps = eps, alpha_adv = alpha_adv, alpha_norm = alpha_norm
 
 
 #############################################
-######### Comparison Phrase (cp) ############
+######### Comparison Phase  (cp) ############
 #############################################
 
 comparison = pipeline.GetComparison()
@@ -87,10 +87,9 @@ pipeline.ShowComparison()
 pipeline.Serialize("../models/German")
 
 #############################################
-######### Data Augmentation Phrase (da) #####
+######### Data Augmentation Phase  (da) #####
 #############################################
 
-pipeline.DataAugmentationFit()
 pipeline.DefenseComparison()
 
 #############################################

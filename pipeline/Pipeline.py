@@ -37,7 +37,14 @@ class Pipeline:
 		self._new_classifier = None
 		self._classifier_batch_size = None
 		self._classifier_epochs = None
-		self._new_classifier_map = {}
+		self._classifier_lr = None
+
+		# self._data_augment_finished = False
+		self._data_augment_classifier_map = {}
+		# self._fine_tune_all_elements_finished = False
+		self._fine_tune_all_elements_classifier_map = {}
+		# self._fine_tune_last_layer_finished = False
+		self._fine_tune_last_layer_classifier_map = {}
 
 		# hyperparameter
 		self._encoder_dim = None
@@ -56,13 +63,13 @@ class Pipeline:
 
 	def ClassifierFit(self, batch_size : int = 100, epochs : int = 400):
 		check_type(self._classifier, Classifier, "Classifier")
-		check_type(self._train_x, np.ndarray, "Classifier Fitting Phrase, train_x")
-		check_type(self._train_y, np.ndarray, "Classifier Fitting Phrase, train_y")
+		check_type(self._train_x, np.ndarray, "Classifier Fitting Phase, train_x")
+		check_type(self._train_y, np.ndarray, "Classifier Fitting Phase, train_y")
 		self._classifier_batch_size = batch_size
 		self._classifier_epochs = epochs
 
 		weighted = self._processor.data_info["weighted"]
-		print("#####################\033[0;31mClassifier Fitting Phrase\033[0m #####################")
+		print("#####################\033[0;31mClassifier Fitting Phase\033[0m #####################")
 		self._classifier.fit(x = self._train_x,
 							 y = self._train_y,
 							 batch_size = batch_size,
@@ -72,9 +79,9 @@ class Pipeline:
 
 	def EncoderFit(self,batch_size : int = 100, epochs : int = 2000,):
 		check_type(self._encoder, AutoEncoderModel, "Encoder")
-		check_type(self._train_x, np.ndarray,"Encoder Fitting Phrase, train_x")
+		check_type(self._train_x, np.ndarray,"Encoder Fitting Phase, train_x")
 
-		print("#####################\033[0;31mEncoder Fitting Phrase\033[0m ########################")
+		print("#####################\033[0;31mEncoder Fitting Phase\033[0m ########################")
 		self._encoder.fit(x = self._train_x[:, self._processor.tabular_data.separate_num:], batch_size = batch_size, epochs = epochs)
 		print("####################################################################")
 
@@ -88,15 +95,15 @@ class Pipeline:
 			   ):
 
 		check_type(self._gan, GAN_Attack_Model, "GAN Model")
-		check_type(self._train_x, np.ndarray, "GAN Model Fitting Phrase, train_x")
-		check_type(self._train_y, np.ndarray, "GAN Model Fitting Phrase, train_y")
+		check_type(self._train_x, np.ndarray, "GAN Model Fitting Phase, train_x")
+		check_type(self._train_y, np.ndarray, "GAN Model Fitting Phase, train_y")
 
 		self._K = K
 		self._eps = eps
 		self._alpha_norm = alpha_norm
 		self._alpha_adv = alpha_adv
 
-		print("#####################\033[0;31mGreedy Fitting Phrase\033[0m #########################")
+		print("#####################\033[0;31mGreedy Fitting Phase\033[0m #########################")
 		# TODO: Hope a better interface, not just greedy_attack
 		A = greedy_attack(target_model = self._classifier.model,
 						  processor = self._processor,
@@ -104,7 +111,7 @@ class Pipeline:
 						  x_data = self._train_x,
 						  device = self._device)
 
-		print("#####################\033[0;31mGAN Fitting Phrase\033[0m ############################")
+		print("#####################\033[0;31mGAN Fitting Phase\033[0m ############################")
 		self._gan.fit(X = self._train_x,
 					  R = A,
 					  y = self._train_y,
@@ -119,9 +126,9 @@ class Pipeline:
 
 	def GetComparison(self):
 		if self._comparison is None:
-			check_none(self._classifier, "Comparison Phrase, Classifier")
-			check_none(self._processor, "Comparison Phrase, TabularDataProcessor")
-			check_none(self._gan, "Comparison Phrase, GAN")
+			check_none(self._classifier, "Comparison Phase, Classifier")
+			check_none(self._processor, "Comparison Phase, TabularDataProcessor")
+			check_none(self._gan, "Comparison Phase, GAN")
 			self._comparison = Comparison(model = self._classifier.model, processor = self._processor, gan_model = self._gan)
 		return self._comparison
 
@@ -130,38 +137,98 @@ class Pipeline:
 		self._comparison.AddAttackModel(name, **kwargs)
 
 	def ShowComparison(self):
-		self._comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+		self.AttackAll(self._test_x, self._test_y).ShowComparison()
+
+	def AttackAll(self, x, y):
+		self._comparison.SetData(x,y).Attacking_All()
+		return self._comparison
 
 	# TODO: More Defense Methods
-	def DataAugmentationFit(self):
-		self._comparison.SetData(self._train_x, self._train_y).Attacking_All()
-		raw_adv_map = self._comparison.adv_map
-		processed_adv_map =self._comparison.adv_map_processed
-		weighted = self._processor.data_info["weighted"]
+	def DataAugmentationFit(self, if_process = True):
 
-		for key in processed_adv_map:
+		for key in self._comparison.adv_map_processed:
 			print(f"-----------Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples FITTING START!-----------")
-			new_train_x = np.vstack((self._train_x, processed_adv_map[key]))
+			new_train_x = np.vstack((self._train_x, self._comparison.adv_map_processed[key] if if_process else self._comparison.adv_map[key]))
 			new_train_y = np.hstack((self._train_y, self._train_y))
-			self._new_classifier_map[key] = copy.deepcopy(self._new_classifier)
-			self._new_classifier_map[key].fit(x = new_train_x,
-							 y = new_train_y,
-							 batch_size = self._classifier_batch_size,
-							 epochs = self._classifier_epochs,
-							 weighted = weighted)
+			self._data_augment_classifier_map[key] = copy.deepcopy(self._new_classifier)
+			self._data_augment_classifier_map[key].fit(x = new_train_x,
+			                                           y = new_train_y,
+			                                           batch_size = self._classifier_batch_size,
+			                                           epochs = self._classifier_epochs,
+			                                           weighted = self._processor.data_info["weighted"])
+			print("---------------------------------------------------------------------------------------------------------")
+
+
+	def FineTuneAllElementsFit(self, epochs = 50, if_process = True):
+
+		for key in self._comparison.adv_map_processed:
+			print(f"-----------FineTune All Elements with (\033[0;31m{key}\033[0m) processed attack samples FITTING START!-----------")
+			new_train_x = self._comparison.adv_map_processed[key] if if_process else self._comparison.adv_map[key]
+			new_train_y = self._train_y
+			self._fine_tune_all_elements_classifier_map[key] = copy.deepcopy(self._classifier)
+			self._fine_tune_all_elements_classifier_map[key].fit(x = new_train_x,
+			                                           y = new_train_y,
+			                                           batch_size = self._classifier_batch_size,
+			                                           epochs = epochs,
+			                                           weighted = self._processor.data_info["weighted"])
+			print("---------------------------------------------------------------------------------------------------------")
+
+	def FineTuneLastLayerFit(self, epochs = 50, if_process = True):
+
+		for key in self._comparison.adv_map_processed:
+			print(f"-----------FineTune Last Layer with (\033[0;31m{key}\033[0m) processed attack samples FITTING START!-----------")
+			new_train_x = self._comparison.adv_map_processed[key] if if_process else self._comparison.adv_map[key]
+			new_train_y = self._train_y
+			self._fine_tune_last_layer_classifier_map[key] = copy.deepcopy(self._classifier)
+
+			# Set parameters
+			for param in self._fine_tune_last_layer_classifier_map[key].model.parameters() :
+				param.requires_grad = False
+			last_layer = list(self._fine_tune_last_layer_classifier_map[key].model.modules())
+			last_layer = last_layer[-1]
+			for param in last_layer.parameters() :
+				param.requires_grad = True
+			optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self._fine_tune_last_layer_classifier_map[key].model.parameters()),
+			                             lr = self._classifier_lr)
+
+			self._fine_tune_last_layer_classifier_map[key].optimizer = optimizer
+			self._fine_tune_last_layer_classifier_map[key].fit(x = new_train_x,
+			                                           y = new_train_y,
+			                                           batch_size = self._classifier_batch_size,
+			                                           epochs = epochs,
+			                                           weighted = self._processor.data_info["weighted"])
 			print("---------------------------------------------------------------------------------------------------------")
 
 	def DefenseComparison(self):
-		# check_none(self._classifier, "Defense Comparison Phrase, Classifier")
-		check_none(self._processor, "Defense Comparison Phrase, TabularDataProcessor")
-		check_none(self._gan, "Defense Comparison Phrase, GAN")
-		for key in self._new_classifier_map:
-			print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
-			comparison =  copy.deepcopy(self._comparison)
-			comparison.target_model = self._new_classifier_map[key].model
+		# check_none(self._classifier, "Defense Comparison Phase, Classifier")
+		check_none(self._processor, "Defense Comparison Phase, TabularDataProcessor")
+		check_none(self._gan, "Defense Comparison Phase, GAN")
+
+		self.AttackAll(self._train_x, self._train_y)
+
+		# self.DataAugmentationFit()
+		# for key in self._data_augment_classifier_map:
+		# 	print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+		# 	comparison = copy.deepcopy(self._comparison)
+		# 	comparison.target_model = self._data_augment_classifier_map[key].model
+		# 	comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+		# 	print("-----------------------------------------------------------------------------------------------------------------")
+
+		self.FineTuneAllElementsFit()
+		for key in self._fine_tune_all_elements_classifier_map:
+			print(f"-----------DefenseComparison with FineTune All Elements with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+			comparison = copy.deepcopy(self._comparison)
+			comparison.target_model = self._fine_tune_all_elements_classifier_map[key].model
 			comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
 			print("-----------------------------------------------------------------------------------------------------------------")
 
+		self.FineTuneLastLayerFit()
+		for key in self._fine_tune_last_layer_classifier_map:
+			print(f"-----------DefenseComparison with FineTune Last Layer with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+			comparison = copy.deepcopy(self._comparison)
+			comparison.target_model = self._fine_tune_last_layer_classifier_map[key].model
+			comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+			print("-----------------------------------------------------------------------------------------------------------------")
 		return self._comparison
 
 
@@ -190,6 +257,7 @@ class Pipeline:
 
 	# TODO: Need a better way to set 3 models
 	def SetClassifier(self, model_type, learning_rate, loss, step_size = 100, gamma = 0.5) :
+		self._classifier_lr = learning_rate
 		model = model_type(self._processor.tabular_data.Rtogether.shape[1], self._processor.tabular_data.nb_classes).to(self._device)
 		optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
 		schedule = StepLR(optimizer, step_size=step_size, gamma=gamma)

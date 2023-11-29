@@ -12,7 +12,7 @@ matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import os
 
-class Classifier():
+class Classifier :
 	"""
 	TODO: Annotation
 	"""
@@ -190,6 +190,15 @@ class Classifier():
 	@property
 	def model(self):
 		return self._model
+	@model.setter
+	def model(self,model):
+		self._model = model
+	@property
+	def optimizer(self):
+		return self._optimizer
+	@optimizer.setter
+	def optimizer(self,optimizer):
+		self._optimizer = optimizer
 
 	def _apply_preprocessing(self, x, y):
 		x_, y_ = x,y

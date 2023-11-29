@@ -120,8 +120,8 @@ class Comparison:
 
 	def ShowComparison(self):
 		# self.Attacking_All()
-		check_none(self._x, "Comparison Phrase, data x ")
-		check_none(self._y, "Comparison Phrase, data y ")
+		check_none(self._x, "Comparison Phase, data x ")
+		check_none(self._y, "Comparison Phase, data y ")
 
 		predictions = self._art_classifier.predict(self._x)
 		pred_benign = np.argmax(predictions, axis = 1)
@@ -224,6 +224,7 @@ class Comparison:
 	def y(self):
 		return self._y
 
+# TODO: gan_model should be a parameter of GetAttack or a parameter in kwargs?
 def GetAttack(name : str,
 			  classifier : PyTorchClassifier = None,
 			  model : torch.nn.Module = None,

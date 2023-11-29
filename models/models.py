@@ -77,7 +77,7 @@ class netClassificationMLP(nn.Module):
         self.model = nn.Sequential(
             nn.Flatten(),
 
-            #using residual
+            # using residual
             # Residual(self.inputDim),
 
             nn.Linear(self.inputDim, 64),
