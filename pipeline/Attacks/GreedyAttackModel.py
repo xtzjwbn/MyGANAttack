@@ -59,9 +59,12 @@ def greedy_attack(target_model : torch.nn.Module,
 		start_list = []
 		end_list = []
 		ans_list = []
-
-		for k in range(K):
+		k = 0
+		while True:
+			if k >= len(score):
+				break
 			cur_position = np.argsort(score)[k]
+			k+=1
 			if cur_position >= processor.tabular_data.separate_num:
 				continue
 			start, end = processor.data_transformer.locating_the_dis_column(cur_position)
@@ -76,6 +79,8 @@ def greedy_attack(target_model : torch.nn.Module,
 			start_list.append(start)
 			end_list.append(end)
 			ans_list.append(k_ans)
+			if len(start_list) == K:
+				break
 
 		adv_x = x_processed[sample_i].clone()
 		adv_x = adv_x.cpu().detach().numpy()

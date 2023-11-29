@@ -90,7 +90,7 @@ pipeline.Serialize("../models/German")
 ######### Data Augmentation Phase  (da) #####
 #############################################
 
-pipeline.DefenseComparison()
+pipeline.DefenseComparison(False,True,True)
 
 #############################################
 #############################################

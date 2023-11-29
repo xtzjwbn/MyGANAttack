@@ -199,37 +199,40 @@ class Pipeline:
 			                                           weighted = self._processor.data_info["weighted"])
 			print("---------------------------------------------------------------------------------------------------------")
 
-	def DefenseComparison(self):
+	def DefenseComparison(self, is_data_augment = True, is_fine_tune_all_elements = True, is_fine_tune_last_layer = True):
 		# check_none(self._classifier, "Defense Comparison Phase, Classifier")
 		check_none(self._processor, "Defense Comparison Phase, TabularDataProcessor")
 		check_none(self._gan, "Defense Comparison Phase, GAN")
 
 		self.AttackAll(self._train_x, self._train_y)
 
-		# self.DataAugmentationFit()
-		# for key in self._data_augment_classifier_map:
-		# 	print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
-		# 	comparison = copy.deepcopy(self._comparison)
-		# 	comparison.target_model = self._data_augment_classifier_map[key].model
-		# 	comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
-		# 	print("-----------------------------------------------------------------------------------------------------------------")
+		if is_data_augment:
+			self.DataAugmentationFit()
+			for key in self._data_augment_classifier_map:
+				print(f"-----------DefenseComparison with Data Augmentation with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+				comparison = copy.deepcopy(self._comparison)
+				comparison.target_model = self._data_augment_classifier_map[key].model
+				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				print("-----------------------------------------------------------------------------------------------------------------")
 
-		self.FineTuneAllElementsFit()
-		for key in self._fine_tune_all_elements_classifier_map:
-			print(f"-----------DefenseComparison with FineTune All Elements with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
-			comparison = copy.deepcopy(self._comparison)
-			comparison.target_model = self._fine_tune_all_elements_classifier_map[key].model
-			comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
-			print("-----------------------------------------------------------------------------------------------------------------")
+		if is_fine_tune_all_elements:
+			self.FineTuneAllElementsFit()
+			for key in self._fine_tune_all_elements_classifier_map:
+				print(f"-----------DefenseComparison with FineTune All Elements with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+				comparison = copy.deepcopy(self._comparison)
+				comparison.target_model = self._fine_tune_all_elements_classifier_map[key].model
+				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				print("-----------------------------------------------------------------------------------------------------------------")
 
-		self.FineTuneLastLayerFit()
-		for key in self._fine_tune_last_layer_classifier_map:
-			print(f"-----------DefenseComparison with FineTune Last Layer with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
-			comparison = copy.deepcopy(self._comparison)
-			comparison.target_model = self._fine_tune_last_layer_classifier_map[key].model
-			comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
-			print("-----------------------------------------------------------------------------------------------------------------")
-		return self._comparison
+		if is_fine_tune_last_layer:
+			self.FineTuneLastLayerFit()
+			for key in self._fine_tune_last_layer_classifier_map:
+				print(f"-----------DefenseComparison with FineTune Last Layer with (\033[0;31m{key}\033[0m) processed attack samples!-----------")
+				comparison = copy.deepcopy(self._comparison)
+				comparison.target_model = self._fine_tune_last_layer_classifier_map[key].model
+				comparison.SetData(self._test_x, self._test_y).Attacking_All().ShowComparison()
+				print("-----------------------------------------------------------------------------------------------------------------")
+		return # self._comparison
 
 
 

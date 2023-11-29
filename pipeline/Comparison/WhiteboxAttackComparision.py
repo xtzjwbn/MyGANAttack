@@ -124,7 +124,7 @@ class Comparison:
 		check_none(self._y, "Comparison Phase, data y ")
 
 		predictions = self._art_classifier.predict(self._x)
-		pred_benign = np.argmax(predictions, axis = 1)
+		pred_origin = np.argmax(predictions, axis = 1)
 
 		accuracy = np.sum(np.argmax(predictions, axis=1) == self._y) / len(self._y)
 
@@ -133,45 +133,57 @@ class Comparison:
 		for key in self._adv_map:
 			if self._adv_map[key] is None:
 				continue
-			predictions_on_raw_adv = self._art_classifier.predict(self._adv_map[key])
-			predictions_on_process = self._art_classifier.predict(self._adv_map_processed[key])
-			pred_raw = np.argmax(predictions_on_raw_adv, axis = 1)
-			pred_process = np.argmax(predictions_on_process, axis = 1)
-
-			accuracy_raw = np.sum(pred_raw == self._y) / len(self._y)
-			accuracy_processed = np.sum(pred_process == self._y) / len(self._y)
-
-			success_rate_raw = np.sum(pred_raw != pred_benign) / len(self._y)
-			success_rate_processed = np.sum(pred_process != pred_benign) / len(self._y)
-
-			change_rate = np.sum(pred_raw != pred_process) / len(self._y)
-			print(f"----------------------------{key}-----------------------------")
-			print(f"----Accuracy on RAW adv-examples : {accuracy_raw * 100}%")
-			print(f"Success Rate on RAW adv-examples : {success_rate_raw * 100}%")
-
-			print(f"----Accuracy on PROCESSED adv-examples : {accuracy_processed * 100}%")
-			print(f"Success Rate on PROCESSED adv-examples : {success_rate_processed * 100}%")
-
-			print(f"Change Rate after processed : {change_rate * 100}%")
+			print(f"----------------------------(\033[0;31m{key}\033[0m)-----------------------------")
+			self._AccuracyCalc(key, pred_origin)
+			self._NormCalc(key)
 
 			# TODO: better data visualization
-			# norm_raw = np.mean(np.linalg.norm(R_test - raw_adv_data, ord = 2, axis = 1))
-			# norm_processed = np.mean(np.linalg.norm(R_test - processed_adv_data, ord = 2, axis = 1))
-			# continuous_norm_raw = np.mean(
-			# 	np.linalg.norm(R_test[:, DT.separate_num :] - raw_adv_data[:, DT.separate_num :], ord = 2, axis = 1))
-			# continuous_norm_processed = np.mean(
-			# 	np.linalg.norm(R_test[:, DT.separate_num :] - processed_adv_data[:, DT.separate_num :], ord = 2, axis = 1))
-			# print(f"L2 Norm on RAW adv-example : {norm_raw}")
-			# print(f"L2 Norm on PROCESSED adv-example : {norm_processed}")
-			# print(f"L2 Norm on continuous RAW adv-example : {continuous_norm_raw}")
-			# print(f"L2 Norm on continuous PROCESSED adv-example : {continuous_norm_processed}")
-			# return_data.append(
-			# 	[accuracy_raw, success_rate_raw, accuracy_processed, success_rate_processed, change_rate, norm_raw,
-			# 	 norm_processed, continuous_norm_raw, continuous_norm_processed])
 			print(f"------------------------------------------------------------------------\n\n")
 
-	def AccuracyCalc(self):
-		pass
+	def _AccuracyCalc(self, key, data_origin):
+		pred_raw = self._art_classifier.predict(self._adv_map[key])
+		pred_processed = self._art_classifier.predict(self._adv_map_processed[key])
+		pred_raw = np.argmax(pred_raw, axis = 1)
+		pred_processed = np.argmax(pred_processed, axis = 1)
+
+		accuracy_on_raw = np.sum(pred_raw == self._y) / len(self._y)
+		accuracy_on_processed = np.sum(pred_processed == self._y) / len(self._y)
+		success_rate_on_raw = np.sum(pred_raw != data_origin) / len(pred_raw)
+		success_rate_on_processed = np.sum(pred_processed != data_origin) / len(pred_processed)
+		change_rate = np.sum(pred_raw != pred_processed) / len(self._y)
+
+		print(f"----Accuracy on RAW / PROCESSED adv-examples : (\033[0;31m{accuracy_on_raw * 100}\033[0m)% ------> (\033[0;31m{accuracy_on_processed * 100}\033[0m)%")
+		print(f"Success Rate on RAW / PROCESSED adv-examples : (\033[0;31m{success_rate_on_raw * 100}\033[0m)% ------> (\033[0;31m{success_rate_on_processed * 100}\033[0m)%")
+		print(f"Change Rate after processed : (\033[0;31m{change_rate * 100}\033[0m)%")
+		return accuracy_on_raw, success_rate_on_raw, accuracy_on_processed, success_rate_on_processed, change_rate
+
+	def _NormCalc(self, key):
+		pert_raw = self._adv_map[key] - self._x
+		pert_processed = self._adv_map_processed[key] - self._x
+
+		all_l0_raw = np.mean(np.linalg.norm(pert_raw, ord = 0, axis = 1))
+		all_l1_raw = np.mean(np.linalg.norm(pert_raw, ord = 1, axis = 1))
+		all_l2_raw = np.mean(np.linalg.norm(pert_raw, ord = 2, axis = 1))
+		all_linf_raw = np.mean(np.linalg.norm(pert_raw, ord = np.inf, axis = 1))
+		all_l0_pro = np.mean(np.linalg.norm(pert_processed, ord = 0, axis = 1))
+		all_l1_pro = np.mean(np.linalg.norm(pert_processed, ord = 1, axis = 1))
+		all_l2_pro = np.mean(np.linalg.norm(pert_processed, ord = 2, axis = 1))
+		all_linf_pro = np.mean(np.linalg.norm(pert_processed, ord = np.inf, axis = 1))
+
+		continuous_l0 = np.mean(np.linalg.norm(pert_processed[:,self._processor.tabular_data.separate_num : ], ord = 0, axis = 1))
+		continuous_l1 = np.mean(np.linalg.norm(pert_processed[:,self._processor.tabular_data.separate_num : ], ord = 1, axis = 1))
+		continuous_l2 = np.mean(np.linalg.norm(pert_processed[:,self._processor.tabular_data.separate_num : ], ord = 2, axis = 1))
+		continuous_linf = np.mean(np.linalg.norm(pert_processed[:,self._processor.tabular_data.separate_num : ], ord = np.inf, axis = 1))
+		print(f"L0 Norm on RAW/PROCESSED adv-example : (\033[0;31m{all_l0_raw:.4f}\033[0m) ------> (\033[0;31m{all_l0_pro:.4f}\033[0m) ------> on Continuous (\033[0;31m{continuous_l0:.4f}\033[0m)")
+		print(f"L1 Norm on RAW/PROCESSED adv-example : (\033[0;31m{all_l1_raw:.4f}\033[0m) ------> (\033[0;31m{all_l1_pro:.4f}\033[0m) ------> on Continuous (\033[0;31m{continuous_l1:.4f}\033[0m)")
+		print(f"L2 Norm on RAW/PROCESSED adv-example : (\033[0;31m{all_l2_raw:.4f}\033[0m) ------> (\033[0;31m{all_l2_pro:.4f}\033[0m) ------> on Continuous (\033[0;31m{continuous_l2:.4f}\033[0m)")
+		print(f"Linf Norm on RAW/PROCESSED adv-example : (\033[0;31m{all_linf_raw:.4f}\033[0m) ------> (\033[0;31m{all_linf_pro:.4f}\033[0m) ------> on Continuous (\033[0;31m{continuous_linf:.4f}\033[0m)")
+
+		# discrete_change_num_raw = np.mean(np.linalg.norm(pert_processed[:, : self._processor.tabular_data.separate_num], ord = 0, axis = 1))
+		discrete_change_num_pro = np.mean(np.linalg.norm(pert_processed[:, : self._processor.tabular_data.separate_num], ord = 0, axis = 1))/2
+		print(f"Discrete Change Number : (\033[0;31m{discrete_change_num_pro}\033[0m)")
+
+		return continuous_l0, continuous_l1, continuous_l2, continuous_linf, discrete_change_num_pro
 
 	def _fit(self):
 		# TODO: art_classifier fitting
